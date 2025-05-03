@@ -1,75 +1,130 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PLA-Linked University Data Beautifier</title>
+  <title>JSON Explorer</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 2rem;
-      background-color: #f4f4f4;
-      color: #333;
-    }
-
-    h1 {
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    textarea {
-      width: 100%;
-      height: 200px;
-      font-family: monospace;
-      padding: 0.5rem;
-      margin-bottom: 1rem;
-    }
-
-    pre {
-      background-color: #fff;
-      padding: 1rem;
-      border: 1px solid #ccc;
-      overflow-x: auto;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-
-    button {
-      padding: 0.5rem 1rem;
-      font-size: 1rem;
-    }
+    body { font-family: sans-serif; margin: 20px; }
+    select, button, input[type="file"] { margin: 10px 0; padding: 5px; }
+    pre { background: #f4f4f4; padding: 10px; max-height: 300px; overflow: auto; }
   </style>
 </head>
 <body>
-  <h1>PLA-Linked University Data Beautifier</h1>
 
-  <p>Paste raw JSON from <code>data-view-data-viz</code> attribute below:</p>
-  <textarea id="rawInput" placeholder='Paste your JSON here...'></textarea>
-  <br />
-  <button onclick="beautifyJson()">Beautify</button>
+<h2>JSON Explorer</h2>
 
-  <h2>Beautified Output</h2>
-  <pre id="beautifiedOutput"></pre>
+<input type="file" accept=".json" onchange="handleFileUpload(event)">
+<br>
+<button onclick="showKeys()">Show Keys</button>
+<br>
+<select id="keySelector" onchange="showUniqueValues()">
+  <option>Select a key</option>
+</select>
+<br>
+<button onclick="exportToText()">Export View to .txt</button>
 
-  <script>
-    function beautifyJson() {
-      const raw = document.getElementById("rawInput").value;
+<pre id="output">Upload a JSON file to begin.</pre>
 
+<script>
+  let jsonData = [];
+
+  function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
       try {
-        // Replace any escaped double quotes from HTML
-        const cleaned = raw
-          .replace(/&quot;/g, '"')
-          .replace(/\\"/g, '"') // replace backslash-escaped quotes
-          .replace(/\\\//g, "/"); // unescape forward slashes
-
-        const parsed = JSON.parse(cleaned);
-        const pretty = JSON.stringify(parsed, null, 2);
-        document.getElementById("beautifiedOutput").textContent = pretty;
-      } catch (error) {
-        document.getElementById("beautifiedOutput").textContent =
-          "❌ Error: Invalid JSON or escape issues. Please check your input.";
+        const parsed = JSON.parse(e.target.result);
+        if (!Array.isArray(parsed)) {
+          document.getElementById('output').textContent = 'Error: JSON must be an array of objects.';
+          return;
+        }
+        jsonData = parsed;
+        document.getElementById('output').textContent = 'JSON loaded. Click "Show Keys" to begin.';
+      } catch (err) {
+        document.getElementById('output').textContent = 'Error parsing JSON: ' + err.message;
       }
+    };
+    reader.readAsText(file);
+  }
+
+  function getAllKeys(data, prefix = '') {
+    const keys = new Set();
+
+    data.forEach(item => {
+      for (let key in item) {
+        const value = item[key];
+        const path = prefix ? `${prefix}.${key}` : key;
+
+        if (Array.isArray(value)) {
+          keys.add(path + '[]');
+        } else if (typeof value === 'object' && value !== null) {
+          getAllKeys([value], path).forEach(k => keys.add(k));
+        } else {
+          keys.add(path);
+        }
+      }
+    });
+
+    return [...keys].sort();
+  }
+
+  function showKeys() {
+    if (!jsonData.length) {
+      document.getElementById('output').textContent = 'No JSON data loaded.';
+      return;
     }
-  </script>
+
+    const keyList = getAllKeys(jsonData);
+    const selector = document.getElementById('keySelector');
+    selector.innerHTML = '<option>Select a key</option>';
+    keyList.forEach(key => {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = key;
+      selector.appendChild(opt);
+    });
+    document.getElementById('output').textContent = 'Keys loaded. Select one to see unique values.';
+  }
+
+  function showUniqueValues() {
+    const key = document.getElementById('keySelector').value;
+    if (!key || key === 'Select a key') return;
+
+    const results = new Set();
+    const pathParts = key.replace(/\[\]$/, '').split('.');
+
+    jsonData.forEach(item => {
+      let value = item;
+      for (let part of pathParts) {
+        if (value && typeof value === 'object') {
+          value = value[part];
+        } else {
+          value = undefined;
+          break;
+        }
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach(v => results.add(v));
+      } else if (value !== undefined) {
+        results.add(value);
+      }
+    });
+
+    const sorted = [...results].sort();
+    document.getElementById('output').textContent = sorted.join('\n');
+  }
+
+  function exportToText() {
+    const text = document.getElementById('output').textContent;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.download = 'json_explorer_output.txt';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+  }
+</script>
+
 </body>
 </html>
