@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PLA-Linked University Data Beautifier</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      background-color: #f4f4f4;
+      color: #333;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    textarea {
+      width: 100%;
+      height: 200px;
+      font-family: monospace;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    pre {
+      background-color: #fff;
+      padding: 1rem;
+      border: 1px solid #ccc;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>PLA-Linked University Data Beautifier</h1>
+
+  <p>Paste raw JSON from <code>data-view-data-viz</code> attribute below:</p>
+  <textarea id="rawInput" placeholder='Paste your JSON here...'></textarea>
+  <br />
+  <button onclick="beautifyJson()">Beautify</button>
+
+  <h2>Beautified Output</h2>
+  <pre id="beautifiedOutput"></pre>
+
+  <script>
+    function beautifyJson() {
+      const raw = document.getElementById("rawInput").value;
+
+      try {
+        // Replace any escaped double quotes from HTML
+        const cleaned = raw
+          .replace(/&quot;/g, '"')
+          .replace(/\\"/g, '"') // replace backslash-escaped quotes
+          .replace(/\\\//g, "/"); // unescape forward slashes
+
+        const parsed = JSON.parse(cleaned);
+        const pretty = JSON.stringify(parsed, null, 2);
+        document.getElementById("beautifiedOutput").textContent = pretty;
+      } catch (error) {
+        document.getElementById("beautifiedOutput").textContent =
+          "❌ Error: Invalid JSON or escape issues. Please check your input.";
+      }
+    }
+  </script>
+</body>
+</html>
